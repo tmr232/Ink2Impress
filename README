@@ -1,25 +1,29 @@
-Ink2Impress is a script that enables using Inkscape as a GUI for generating basic Impress.js presentations.
+Ink2Impress is a script that enables using Inkscape as a GUI forgenerating basic Impress.js presentations.
+
+Demo coming soon...
 
 Relevant links:
 
-Inkscape - inkscape.org
+Inkscape - http://inkscape.org
 Impress.js - https://github.com/bartaz/impress.js
 
 Usage:
 
 	1) Create a new document
-		1.1) Set the size of the page to the actual pixel-size you want for your
-				presentation.
+		1.1) Set the size of the page to the actual pixel-size you want
+				for your presentation.
 	2) Make sure you have 2 layers
 		2.1) The bottom layer for graphics, the top for layout
 	3) Create your graphics
 		3.1) Make sure all your graphics are within the bounds of 
 				the page, and only on the bottom layer.
 	4) Create your layout
-		4.1) Each rect you put in the layout layer, will be a step in the presentation.
+		4.1) Each rect you put in the layout layer, will be a step in the
+				presentation.
 		4.2) z-order will dictate presentation order (bottom to top)
 		4.3) Feel free to scale and rotate your frames.
-		*) Make sure you don't have any 180 degree rotations - they are not handled correctly for now.
+		*) Make sure you don't have any 180 degree rotations - they are not
+				handled correctly for now.
 	5) Save your presentation
 		5.1) Save your file as a plain SVG (not Inkscape-SVG)
 	6) Run the convertion script

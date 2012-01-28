@@ -1,3 +1,16 @@
+"""\
+Ink2Impress.py
+
+Create impress.js presentation graphically in Inkscape!
+
+Still WIP, but can already create some awesome stuff!
+
+Known Issues:
+	1) Can't handle 180d rotations
+	2) Can't handle transform=scale
+	3) Some resolution issues
+"""
+
 from lxml import etree
 import re
 import math

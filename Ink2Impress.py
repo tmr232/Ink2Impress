@@ -118,8 +118,6 @@ def create_impress(svg_tree):
     # Set smallest sizes as scale base
     base_height = min([data.h for data in step_rects_data])
     base_width = min([data.w for data in step_rects_data])
-    base_height = BASE_HEIGHT
-    base_width = BASE_WIDTH
     
     # Create a <div> from each layout <rect>
     divs = []

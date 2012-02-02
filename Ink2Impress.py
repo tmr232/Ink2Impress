@@ -22,7 +22,7 @@ TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"
 TRANSFORM_SCALE_PAT = r"scale\(([^,]*),([^,]*)\)"
 
-BASE_WIDTH      = 700
+BASE_WIDTH      = 900
 BASE_HEIGHT     = 600
 
 ID_OVERVIEW = "overview"
@@ -51,7 +51,6 @@ def parse_matrix(mat):
     return rotation, x, y
 
 def parse_translate(trans):
-    #import pdb;pdb.set_trace()
     translate_parts = re.match(TRANSFORM_TRANSLATE_PAT, trans).groups()
     
     x = float(translate_parts[0])
@@ -60,7 +59,6 @@ def parse_translate(trans):
     return 0, x, y
 
 def parse_scale(scale):
-    #import pdb;pdb.set_trace()
     scale_parts = re.match(TRANSFORM_SCALE_PAT, trans).groups()
     
     if "-1" == scale_parts[0] == scale_parts[1]:
@@ -122,7 +120,6 @@ def calc_scale(base_width, base_height, width, height):
 def create_impress(svg_tree):
     # Get the <svg> node
     
-    #import pdb; pdb.set_trace()
     svg_root = svg_tree.getroot()
     
     # Get all layers (<g> nodes under the <svg> node)
@@ -132,9 +129,7 @@ def create_impress(svg_tree):
     layout_layer = layers[1]
     
     # Extract the translation of the layout layer (to be later added to the rects)
-    #import pdb;pdb.set_trace()
     layout_r, layout_x, layout_y = parse_transform(layout_layer.get("transform"))
-    print layout_x, layout_y
     
     # Get scales and locations from the layout layer
     # Each <rect> in this layer is a step in the impress.js presentation.

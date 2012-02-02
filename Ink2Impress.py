@@ -16,10 +16,14 @@ import re
 import math
 
 #TODO: handle transform="scale(...)"
+#TODO: add beckground color
 
 TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)\)"
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"
 TRANSFORM_SCALE_PAT = r"scale\(([^,]*),([^,]*)\)"
+
+BASE_WIDTH      = 700
+BASE_HEIGHT     = 600
 
 class Rect(object):
     def __init__(self, x, y, h, w, r):
@@ -63,6 +67,9 @@ def parse_scale(scale):
 
 
 def parse_transform(value):
+    """Parse the 'transform=' attribute of SVG tags.
+    Return (r, x, y)
+    """
     for parser in [parse_translate, parse_matrix, parse_scale]:
         try:
             return parser(value)
@@ -92,6 +99,18 @@ def extract_rect_data(rect):
     y += g_y
     
     return Rect(x, y, h, w, r)
+    
+def calc_scale(base_width, base_height, width, height):
+    width_scale = width / base_width
+    height_scale = height / base_height
+    
+    scaled_height_diff = (height / width_scale) - base_height
+    scaled_width_diff = (width / height_scale) - base_width
+    
+    if scaled_width_diff > scaled_height_diff:
+        return width_scale
+    else:
+        return height_scale
 
 def create_impress(svg_tree):
     # Get the <svg> node
@@ -105,8 +124,8 @@ def create_impress(svg_tree):
     graphics_layer = layers[0]
     layout_layer = layers[1]
     
-    # Rectify the location of each layer
-    #graphics_layer.set("transform","translate(0,0)")
+    # Extract the translation of the layout layer (to be later added to the rects)
+    layout_r, layout_x, layout_y = parse_transform(layout_layer)
     
     # Get scales and locations from the layout layer
     # Each <rect> in this layer is a step in the impress.js presentation.
@@ -115,17 +134,20 @@ def create_impress(svg_tree):
     # Go over all the rects and extract location, rotation and size
     step_rects_data = [extract_rect_data(rect) for rect in step_rects]
     
-    # Set smallest sizes as scale base
-    base_height = min([data.h for data in step_rects_data])
-    base_width = min([data.w for data in step_rects_data])
+    # Set sizes for scaling
+    base_width = BASE_WIDTH
+    base_height = BASE_HEIGHT
     
     # Create a <div> from each layout <rect>
     divs = []
     for data in step_rects_data:
-        scale = max(data.h / base_height, data.w / base_width)
+        scale = calc_scale(base_width, base_height, data.w, data.h)
         rotate = data.r
-        x = data.x
-        y = data.y
+        # Here we add the location of the layout layer to compensate for
+        # its translations.
+        #TODO: Do we need to handle rotation and scale?
+        x = data.x# + layout_x
+        y = data.y# + layout_y
         div = etree.Element("div")
         div.set("data-scale",str(scale))
         div.set("data-rotate", str(rotate))
@@ -133,9 +155,9 @@ def create_impress(svg_tree):
         div.set("data-y", str(y))
         div.set("class", "step")
         # Add empty data - cause we have to...
-        p = etree.Element("p", style="width:10;height:10;display:block")
-        p.text = " "
-        div.append(p)
+        span = etree.Element("span", style="width:%dpx;height:%dpx;display:block" % (data.w, data.h, ))
+        span.text = " "
+        div.append(span)
         divs.append(div)
         
     # Wrap the graphics layer in a <div> tag, use the width and height of the <svg> tag.

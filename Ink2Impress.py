@@ -73,6 +73,8 @@ def parse_transform(value):
     for parser in [parse_translate, parse_matrix, parse_scale]:
         try:
             return parser(value)
+        except TypeError:
+            raise
         except:
             pass
     return 0,0,0
@@ -125,7 +127,9 @@ def create_impress(svg_tree):
     layout_layer = layers[1]
     
     # Extract the translation of the layout layer (to be later added to the rects)
-    layout_r, layout_x, layout_y = parse_transform(layout_layer)
+    #import pdb;pdb.set_trace()
+    layout_r, layout_x, layout_y = parse_transform(layout_layer.get("transform"))
+    print layout_x, layout_y
     
     # Get scales and locations from the layout layer
     # Each <rect> in this layer is a step in the impress.js presentation.
@@ -146,8 +150,8 @@ def create_impress(svg_tree):
         # Here we add the location of the layout layer to compensate for
         # its translations.
         #TODO: Do we need to handle rotation and scale?
-        x = data.x# + layout_x
-        y = data.y# + layout_y
+        x = data.x + layout_x
+        y = data.y + layout_y
         div = etree.Element("div")
         div.set("data-scale",str(scale))
         div.set("data-rotate", str(rotate))

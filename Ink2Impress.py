@@ -25,13 +25,16 @@ TRANSFORM_SCALE_PAT = r"scale\(([^,]*),([^,]*)\)"
 BASE_WIDTH      = 700
 BASE_HEIGHT     = 600
 
+ID_OVERVIEW = "overview"
+
 class Rect(object):
-    def __init__(self, x, y, h, w, r):
+    def __init__(self, x, y, h, w, r, id_):
         self.x = x
         self.y = y
         self.h = h
         self.w = w
         self.r = r
+        self.id = id_
 
 def parse_matrix(mat):
     """ Returns (rotation, x, y)
@@ -100,7 +103,9 @@ def extract_rect_data(rect):
     x += g_x
     y += g_y
     
-    return Rect(x, y, h, w, r)
+    id_ = rect.get("id")
+    
+    return Rect(x, y, h, w, r, id_)
     
 def calc_scale(base_width, base_height, width, height):
     width_scale = width / base_width
@@ -158,8 +163,13 @@ def create_impress(svg_tree):
         div.set("data-x", str(x))
         div.set("data-y", str(y))
         div.set("class", "step")
+        div.set("id", data.id)
         # Add empty data - cause we have to...
-        span = etree.Element("span", style="width:%dpx;height:%dpx;display:block" % (data.w, data.h, ))
+        # Don't make a clickable span for the overview
+        if data.id != ID_OVERVIEW:
+            span = etree.Element("span", style="width:%dpx;height:%dpx;display:block" % (data.w / scale, data.h / scale, ))
+        else:
+            span = etree.Element("span", style="width:%dpx;height:%dpx;" % (data.w / scale, data.h / scale, ))
         span.text = " "
         div.append(span)
         divs.append(div)

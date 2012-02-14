@@ -15,8 +15,16 @@ from lxml import etree
 import re
 import math
 
+from matutil import decomp_rot2, decomp_scale2, mat2
+
 #TODO: handle transform="scale(...)"
 #TODO: add beckground color
+
+#TODO: As handling is being added to all transformation properties,
+#       the need for handling tag nesting rises. We need elements
+#       to inherit from their parents (=groups, basically).
+#       Also, namind conventions need be added to enbale telling which rect is
+#       the frame rect and which are simply annotations.
 
 TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)\)"
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"
@@ -35,6 +43,14 @@ class Rect(object):
         self.w = w
         self.r = r
         self.id = id_
+        
+class Transform(object):
+    def __init__(self, r=0, dx=0, dy=0, sx=0, sy=0):
+        self.r = r
+        self.sx = sx
+        self.sy = sy
+        self.dx = dx
+        self.dy = dy
 
 def parse_matrix(mat):
     """ Returns (rotation, x, y)
@@ -42,13 +58,18 @@ def parse_matrix(mat):
     """
     matrix_parts = re.match(TRANSFORM_MATRIX_PAT, mat).groups()
     
-    rotation = math.atan2(-float(matrix_parts[2]), float(matrix_parts[0]))
-    rotation = math.degrees(rotation)
+    # Convert the matrix to a useful format (ignore translation)
+    m = mat2(*matrix_parts[:4])
     
-    x = float(matrix_parts[-2])
-    y = float(matrix_parts[-1])
+    # Extract rotation and scaling
+    r = math.degrees(decomp_rot2(m))
+    sx, sy = decomp_scale2(m)
     
-    return rotation, x, y
+    # Extrace the translation from the transform
+    dx = matrix_parts[-2]
+    dy = matrix_parts[-1]
+    
+    return Transform(r, dx, dy, sx, sy)
 
 def parse_translate(trans):
     translate_parts = re.match(TRANSFORM_TRANSLATE_PAT, trans).groups()
@@ -56,15 +77,12 @@ def parse_translate(trans):
     x = float(translate_parts[0])
     y = float(translate_parts[1])
     
-    return 0, x, y
+    return Transform(dx=x, dy=y)
 
 def parse_scale(scale):
     scale_parts = re.match(TRANSFORM_SCALE_PAT, trans).groups()
     
-    if "-1" == scale_parts[0] == scale_parts[1]:
-        return 180, 0, 0
-    
-    return 0, 0, 0
+    return Transform(sx=float(scale_parts[0]), sy=float(scale_parts[1]))
 
 
 def parse_transform(value):
@@ -78,7 +96,7 @@ def parse_transform(value):
             raise
         except:
             pass
-    return 0,0,0
+    return Transform()
 
 def extract_rect_data(rect):
     try:

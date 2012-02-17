@@ -15,6 +15,9 @@ from lxml import etree
 import re
 import math
 
+import matutil
+from matutil import E_X, E_Y, Matrix, scale_matrix, rotation_matrix, eye, translation_matrix
+
 #TODO: handle transform="scale(...)"
 #TODO: add beckground color
 
@@ -22,33 +25,172 @@ TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"
 TRANSFORM_SCALE_PAT = r"scale\(([^,]*),([^,]*)\)"
 
+#IMPORTANT: decomposition order should be altered to prefer rotation to scale!!!
+
 BASE_WIDTH      = 900
 BASE_HEIGHT     = 600
 
 ID_OVERVIEW = "overview"
 
 class Rect(object):
-    def __init__(self, x, y, h, w, r, id_):
-        self.x = x
-        self.y = y
-        self.h = h
-        self.w = w
-        self.r = r
-        self.id = id_
+    def __init__(self, x=0, y=0, h=0, w=0, r=0, id_=None, element=None, transform=None):
+        if element is not None:
+            self._init_from_element(element, transform)
+        else:
+            self._x = x
+            self._y = y
+            self._h = h
+            self._w = w
+            self._id = id_
+            self._r = r
+            
+    def _init_from_element(self, element, transform):
+        # Define transform-independant parameters
+        if element.get("id"):
+            self._id = element.get("id")
+        else:
+            self._id = None
+            
+        # Init all the params that might be affected by the transformation
+        if element.get("x"):
+            self._x = float(element.get("x"))
+        else:
+            self._x = 0
+            
+        if element.get("y"):
+            self._y = float(element.get("y"))
+        else:
+            self._y = 0
+            
+        if element.get("height"):
+            self._h = float(element.get("height"))
+        else:
+            self._h = 0
+            
+        if element.get("width"):
+            self._w = float(element.get("width"))
+        else:
+            self._w = 0
+           
+        # Get the transform of the element
+        if transform:
+            self._transform = transform
+        else:
+            self._transform = get_element_transform(element)
+            
+        # Apply the transformation to all properties
+        #NOTE: this is the first attempt to apply the transformation - probably will not work!
+        # Get the rotation
+        import pdb;pdb.set_trace()
+        r = self._r = self._transform.r
+        
+        # Get the scale and apply to width and height
+        self._w = w = self._w * self._transform.sx
+        self._h = h = self._h * self._transform.sy
+        # Calculate new x and y coordinates
+        x_center = self._x + (w / 2)
+        y_center = self._y + (h / 2)
+        
+        x, y = rotate(x_center, y_center, r)
+        x += self._transform.dx
+        y += self._transform.dy
+        
+        self._x = x
+        self._y = y
+            
+    @property
+    def x(self):
+        return self._x
+    
+    @property
+    def y(self):
+        return self._y
+    
+    @property
+    def width(self):
+        return self._w
+    
+    @property
+    def w(self):
+        return self.width
+    
+    @property
+    def height(self):
+        return self._h
+    
+    @property
+    def h(self):
+        return self.height
+    
+    @property
+    def id(self):
+        return self._id
+    
+    @property
+    def rotation(self):
+        return math.degrees(self._r)
+    
+    @property
+    def r(self):
+        return self.rotation
+        
+class Transform(object):
+    def __init__(self, matrix=None):
+        if not matrix:
+            matrix = eye(3)
+        self._matrix = matrix
+        
+    def __add__(self, other):
+        return Transform(other._matrix * self._matrix)
+    
+    @property
+    def dx(self):
+        return self._matrix[(0, 2)]
+    
+    @property
+    def dy(self):
+        return self._matrix[(1, 2)]
+        
+    @property
+    def r(self):
+        return matutil.decompose_rotation2(self._matrix.minor(2, 2))
+        
+    @property
+    def sx(self):
+        return matutil.decompose_scale(self._matrix.minor(2, 2))[0]
+        
+    @property
+    def sy(self):
+        return matutil.decompose_scale(self._matrix.minor(2, 2))[1]
+    
+def rotate(x, y, r):
+    rot_mat = rotation_matrix(2, 0, 1, r)
+    vec = x * E_X + y * E_Y
+    vec_tag = rot_mat * vec
+    x = vec_tag[(0, 0)]
+    y = vec_tag[(1, 0)]
+    
+    return x, y
+    
+    
+def scale_transform(sx, sy):
+    return Transform(scale_matrix(sx, sy, 1))
+    
+def rotation_transform(r):
+    return Transform(rotation_matrix(3, 0, 1, r))
+    
+def translate_transform(dx, dy):
+    return Transform(translation_matrix(dx, dy))
 
 def parse_matrix(mat):
-    """ Returns (rotation, x, y)
-    Assumes no scaling in the matrix.
-    """
     matrix_parts = re.match(TRANSFORM_MATRIX_PAT, mat).groups()
+    matrix_parts = [float(part) for part in matrix_parts]
+    a, b, c, d, e, f = matrix_parts
+    matrix = Matrix([[a, c, e],
+                     [b, d, f],
+                     [0,0, 1]])
     
-    rotation = math.atan2(-float(matrix_parts[2]), float(matrix_parts[0]))
-    rotation = math.degrees(rotation)
-    
-    x = float(matrix_parts[-2])
-    y = float(matrix_parts[-1])
-    
-    return rotation, x, y
+    return Transform(matrix)
 
 def parse_translate(trans):
     translate_parts = re.match(TRANSFORM_TRANSLATE_PAT, trans).groups()
@@ -56,15 +198,15 @@ def parse_translate(trans):
     x = float(translate_parts[0])
     y = float(translate_parts[1])
     
-    return 0, x, y
+    return translate_transform(x, y)
 
 def parse_scale(scale):
-    scale_parts = re.match(TRANSFORM_SCALE_PAT, trans).groups()
-    
-    if "-1" == scale_parts[0] == scale_parts[1]:
-        return 180, 0, 0
-    
-    return 0, 0, 0
+    print "scale"
+    import pdb;pdb.set_trace()
+    scale_parts = re.match(TRANSFORM_SCALE_PAT, scale).groups()
+    scale_parts = [float(part) for part in scale_parts]
+    print scale_parts
+    return scale_transform(scale_parts[0], scale_parts[1])
 
 
 def parse_transform(value):
@@ -73,37 +215,15 @@ def parse_transform(value):
     """
     for parser in [parse_translate, parse_matrix, parse_scale]:
         try:
+            ret = parser(value)
+            print value
+            print ret._matrix
             return parser(value)
         except TypeError:
             raise
         except:
             pass
-    return 0,0,0
-
-def extract_rect_data(rect):
-    try:
-        g_r, g_x, g_y = parse_transform(rect.get("transform"))
-    except:
-        g_r, g_x, g_y = 0, 0, 0
-    
-    
-    h = float(rect.get("height"))
-    w = float(rect.get("width"))
-    
-    r = g_r
-    l_x = float(rect.get("x")) + w/2
-    l_y = float(rect.get("y")) + h/2
-    r_r = math.radians(g_r)
-    x = l_x * math.cos(r_r) - l_y * math.sin(r_r)
-    y = l_x * math.sin(r_r) + l_y * math.cos(r_r)
-    
-    
-    x += g_x
-    y += g_y
-    
-    id_ = rect.get("id")
-    
-    return Rect(x, y, h, w, r, id_)
+    return Transform(eye(3))
     
 def calc_scale(base_width, base_height, width, height):
     width_scale = width / base_width
@@ -116,6 +236,49 @@ def calc_scale(base_width, base_height, width, height):
         return width_scale
     else:
         return height_scale
+    
+def get_element_transform(element):
+    try:
+        return parse_transform(element.get("transform"))
+    except:
+        return Transform()
+    
+def sum_parent_transform(element, topmost, include_self=True):
+    # First, make sure element is a decendant of topmost
+    if topmost not in list(element.iterancestors()):
+        raise ValueError("%s is not a decendant of %s" % (element, topmost))
+        
+    transform = Transform()
+    if include_self:
+        transform += get_element_transform(element)
+    for ancestor in element.iterancestors():
+        #print transform._matrix
+        cur_transform = get_element_transform(ancestor)
+        transform += cur_transform
+        
+        if ancestor == topmost:
+            break
+    #print transform._matrix
+    return transform
+    
+def process_layout_layer(layout_layer):
+    # First, we want to get all the rects in the layer
+    #BUG: for now, we are assumins that there is only 1 rect per group!
+    rects = layout_layer.xpath(".//rect")
+    
+    # Get the parent-induced transformation for all rects
+    parent_transforms = [sum_parent_transform(rect, layout_layer) for rect in rects]
+    
+    # Parse all the rects, and apply transformations
+    rect_objects = [
+        Rect(element=rect, transform=transform) for
+            rect, transform in zip(rects, parent_transforms)
+        ]
+    
+    #TODO: this will be the place to add metadata based filtering!
+    
+    # Now we have proper frame data to return!
+    return rect_objects
 
 def create_impress(svg_tree):
     # Get the <svg> node
@@ -128,15 +291,8 @@ def create_impress(svg_tree):
     graphics_layer = layers[0]
     layout_layer = layers[1]
     
-    # Extract the translation of the layout layer (to be later added to the rects)
-    layout_r, layout_x, layout_y = parse_transform(layout_layer.get("transform"))
-    
-    # Get scales and locations from the layout layer
-    # Each <rect> in this layer is a step in the impress.js presentation.
-    step_rects = layout_layer.xpath("rect")
-    
-    # Go over all the rects and extract location, rotation and size
-    step_rects_data = [extract_rect_data(rect) for rect in step_rects]
+    # Get all the frame-rects from the layout layer, correctly transformed!
+    step_rects_data = process_layout_layer(layout_layer)
     
     # Set sizes for scaling
     base_width = BASE_WIDTH
@@ -150,8 +306,8 @@ def create_impress(svg_tree):
         # Here we add the location of the layout layer to compensate for
         # its translations.
         #TODO: Do we need to handle rotation and scale?
-        x = data.x + layout_x
-        y = data.y + layout_y
+        x = data.x
+        y = data.y
         div = etree.Element("div")
         div.set("data-scale",str(scale))
         div.set("data-rotate", str(rotate))

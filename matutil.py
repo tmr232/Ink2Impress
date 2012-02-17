@@ -4,7 +4,7 @@ Decompose rotate&scale only (no shear) 2d matrices
 import math
 
 import matrix
-from matrix import Matrix
+from matrix import Matrix, eye
 
 def e_vec(size, dim):
     if dim >= size:
@@ -14,6 +14,10 @@ def e_vec(size, dim):
     vec[(dim, 0)] = 1
     
     return vec
+
+
+E_X = e_vec(2, 0)
+E_Y = e_vec(2, 1)
 
 def decompose_scale(mat):
     """Decompose the scale factors from a transformation matrix without shear.
@@ -47,6 +51,31 @@ def scale_matrix(*scale):
     
     return mat
 
+def translation_matrix(*translation):
+    mat = eye(len(translation) + 1)
+    for i, t in enumerate(translation):
+        mat[(i, len(translation))] = t
+        
+    return mat
+
+def rotation_matrix(size, d1, d2, angle):
+    if d1 == d2:
+        raise ValueError("d1 and d2 are equal!")
+    if d1 >= size or d2 >= size:
+        raise ValueError("Rotation dimensions are larger than matrix size!")
+        
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+    
+    rotation_mat = matrix.eye(size)
+    
+    rotation_mat[(d1, d1)] = cos
+    rotation_mat[(d1, d2)] = -sin
+    rotation_mat[(d2, d2)] = cos
+    rotation_mat[(d2, d1)] = sin
+    
+    return rotation_mat
+
 def rotation_matrix2(rotation):
     cos = math.cos(rotation)
     sin = math.sin(rotation)
@@ -59,6 +88,7 @@ def get_rotation_matrix(mat):
     scale = decompose_scale(mat)
     unscale_matrix = scale_matrix(*[1./s for s in scale])
     return mat * unscale_matrix
+    #return rotation_matrix2(decompose_rotation2(mat))
 
 def get_scale_matrix(mat):
     return scale_matrix(decompose_scale(mat))
@@ -74,9 +104,13 @@ def decompose_rotation2(mat):
         
     rotation_mat = get_rotation_matrix(mat)
     return math.atan2(rotation_mat[(1,0)], rotation_mat[(0,0)])
+    
+    #vec = E_X
+    #vec_tag = mat * vec
+    #x = vec_tag[(0, 0)]
+    #y = vec_tag[(1, 0)]
+    #return math.atan2(y, x)
 
-E_X = e_vec(2, 0)
-E_Y = e_vec(2, 1)
 
 def main():
     pass

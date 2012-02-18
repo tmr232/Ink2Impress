@@ -6,8 +6,6 @@ Create impress.js presentation graphically in Inkscape!
 Still WIP, but can already create some awesome stuff!
 
 Known Issues:
-	1) Can't handle 180d rotations
-	2) Can't handle transform=scale
 	3) Some resolution issues
 """
 
@@ -18,8 +16,7 @@ import math
 import matutil
 from matutil import E_X, E_Y, Matrix, scale_matrix, rotation_matrix, eye, translation_matrix
 
-#TODO: handle transform="scale(...)"
-#TODO: add beckground color
+#TODO: add background color - take from SVG properties!!! Inkscape rocks!
 
 TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)\)"
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"

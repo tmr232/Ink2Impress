@@ -96,6 +96,28 @@ class Rect(object):
         
         self._x = x
         self._y = y
+        
+        # Try and change the rotation based on rotation-direction and rotation-extra
+        # attributes
+        rotation_direction = get_attribute(element, "rotation-direction", inherit=True)
+        rotation_extra = get_attribute(element, "rotation-extra", inherit=True)
+        
+        # Set rotation direction
+        if rotation_direction:
+            if rotation_direction.lower() == "cw":
+                # Make sure r is clockwise
+                r = r % (math.pi * 2)
+            elif rotation_direction.lower() == "ccw":
+                # Make r counter-clockwise
+                r = r % (-(math.pi * 2))
+            
+        # Set rotation extra
+        if rotation_extra is not None:
+            rotation_extra = int(rotation_extra)
+            r += (math.pi * 2) * rotation_extra
+            
+        # Set the rotation
+        self._r = r
             
     @property
     def x(self):
@@ -236,6 +258,14 @@ def get_element_transform(element):
     except:
         return Transform()
     
+def is_ancestor(ancestor, decendant):
+    if ancestor not in list(decendant.iterancestors()):
+        return False
+    return True
+
+def is_decendant(decendant, ancestor):
+    return is_ancestor(ancestor, decendant)
+    
 def sum_parent_transform(element, topmost, include_self=True):
     # First, make sure element is a decendant of topmost
     if topmost not in list(element.iterancestors()):
@@ -251,6 +281,25 @@ def sum_parent_transform(element, topmost, include_self=True):
         if ancestor == topmost:
             break
     return transform
+
+def inherit_attribute(element, attrib, topmost=None):
+    """Inherit attribute 'attrib' from closest parent possible.
+    """
+    if (topmost is not None) and not is_ancestor(topmost, element):
+        raise ValueError("%s is not an ancestor of %s" % (topmost, element))
+        
+    inherited_attrib = None
+    #NOTE: assume ancestors are iterated from closest to farthest parent
+    for ancestor in element.iterancestors():
+        inherited_attrib = ancestor.get(attrib)
+        if inherited_attrib is not None:
+            return inherited_attrib
+        
+def get_attribute(element, attrib, inherit=False, topmost=None):
+    if element.get(attrib) is not None:
+        return element.get(attrib)
+    else:
+        return inherit_attribute(element, attrib, topmost)
     
 def process_layout_layer(layout_layer):
     # First, we want to get all the rects in the layer

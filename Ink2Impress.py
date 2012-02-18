@@ -81,7 +81,6 @@ class Rect(object):
         # Apply the transformation to all properties
         #NOTE: this is the first attempt to apply the transformation - probably will not work!
         # Get the rotation
-        import pdb;pdb.set_trace()
         r = self._r = self._transform.r
         
         # Get the scale and apply to width and height
@@ -201,11 +200,8 @@ def parse_translate(trans):
     return translate_transform(x, y)
 
 def parse_scale(scale):
-    print "scale"
-    import pdb;pdb.set_trace()
     scale_parts = re.match(TRANSFORM_SCALE_PAT, scale).groups()
     scale_parts = [float(part) for part in scale_parts]
-    print scale_parts
     return scale_transform(scale_parts[0], scale_parts[1])
 
 
@@ -215,9 +211,6 @@ def parse_transform(value):
     """
     for parser in [parse_translate, parse_matrix, parse_scale]:
         try:
-            ret = parser(value)
-            print value
-            print ret._matrix
             return parser(value)
         except TypeError:
             raise
@@ -252,13 +245,11 @@ def sum_parent_transform(element, topmost, include_self=True):
     if include_self:
         transform += get_element_transform(element)
     for ancestor in element.iterancestors():
-        #print transform._matrix
         cur_transform = get_element_transform(ancestor)
         transform += cur_transform
         
         if ancestor == topmost:
             break
-    #print transform._matrix
     return transform
     
 def process_layout_layer(layout_layer):

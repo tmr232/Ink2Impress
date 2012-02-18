@@ -39,8 +39,10 @@ Your demos are welcome!
 
 ### Code
 [lxml](http://lxml.de/) - XML processing - Use [this](http://www.lfd.uci.edu/~gohlke/pythonlibs/) for precompiled binaries.
+
 [impress.js](https://github.com/bartaz/impress.js) - For the animations in the presentation.
 
 ### Software
 [Python2.7](http://python.org/) - For running the script. Not tested for other versions.
+
 [Inkscape](http://inkscape.org/) - For presentation creation

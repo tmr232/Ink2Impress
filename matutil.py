@@ -3,107 +3,117 @@ Decompose rotate&scale only (no shear) 2d matrices
 """
 import math
 
-def matmul2(m1, m2):
-    return [
-        [
-            m1[0][0] * m2[0][0] + m1[0][1] * m2[1][0],
-            m1[0][0] * m2[0][1] + m1[0][1] * m2[1][1]
-        ],
-        [
-            m1[1][0] * m2[0][0] + m1[1][1] * m2[1][0],
-            m1[1][0] * m2[0][1] + m1[1][1] * m2[1][1]
-        ]
-    ]
-    
-def rotmat2(r):
-    cos = math.cos(r)
-    sin = math.sin(r)
-    return [[cos, -sin],
-            [sin, cos]]
-    
-def scalemat2(x, y=None):
-    if y is None:
-        y = x
+import matrix
+from matrix import Matrix, eye
+
+def e_vec(size, dim):
+    if dim >= size:
+        raise ValueError("Dimension %d is larger than or equal to size %d" % (dim, size))
         
-    return [[x, 0],
-            [0, y]]
+    vec = matrix.column_vector([0 for x in range(size)])
+    vec[(dim, 0)] = 1
     
-def mat2(m11,m12,m21,m22):
-    return [[m11,m12],
-            [m21,m22]]
-    
-def det2(m):
-    return m[0][0] * m[1][1] - m[0][1] * m[1][0]
+    return vec
 
-def mag2(v):
-    return math.sqrt(v[0]**2 + v[1]**2)
 
-def dist2(v1, v2):
-    return mag2([v1[0] - v2[0], v1[1] - v2[1]])
-    
-def eye2():
-    return mat2(1,0,0,1)
-    
-def matvec2(m, v):
-    return [
-        v[0] * m[0][0] + v[1] * m[0][1],
-        v[0] * m[1][0] + v[1] * m[1][1]
-    ]
-    
-def vec2(x, y):
-    return [x, y]
-    
-def ex2():
-    return vec2(1, 0)
-    
-def ey2():
-    return vec2(0, 1)
-    
-def decomp_scale2(m):
-    vx = matvec2(m, ex2())
-    vy = matvec2(m, ey2())
-    
-    sx = mag2(vx)
-    sy = mag2(vy)
-    
-    return sx, sy
+E_X = e_vec(2, 0)
+E_Y = e_vec(2, 1)
 
-def unscale2(m):
-    sx, sy = decomp_scale2(m)
-    us = scalemat2(1./sx, 1./sy)
-    return matmul2(m, us)
+def decompose_scale(mat):
+    """Decompose the scale factors from a transformation matrix without shear.
+    """
+    if not mat.is_square():
+        raise ValueError("Can't decompose a non-square matrix.")
+        
+    dims = mat.rows()
+    scales = []
+    for dim in range(dims):
+        vec = e_vec(dims, dim)
+        vec_tag = mat * vec
+        scale = math.sqrt(vec_tag.transpose().matrix_multiply(vec_tag))
+        scales.append(scale)
+        
+    return scales
+
+def scale_matrix(*scale):
+    scale_vec = matrix.row_vector(list(scale))
+    scale_mat = matrix.eye(len(scale))
     
-getrotmat2 = unscale2
+    mat = matrix.Matrix(
+        [
+            [
+                (scale[col] if col == row else 0) for
+                col in range(len(scale))
+            ] for
+        row in range(len(scale))
+        ]
+    )
     
-def decomp_rot2(m):
-    rm = unscale2(m)
-    return math.atan2(m[1][0], m[0][0])
+    return mat
+
+def translation_matrix(*translation):
+    mat = eye(len(translation) + 1)
+    for i, t in enumerate(translation):
+        mat[(i, len(translation))] = t
+        
+    return mat
+
+def rotation_matrix(size, d1, d2, angle):
+    if d1 == d2:
+        raise ValueError("d1 and d2 are equal!")
+    if d1 >= size or d2 >= size:
+        raise ValueError("Rotation dimensions are larger than matrix size!")
+        
+    cos = math.cos(angle)
+    sin = math.sin(angle)
     
-def unrot2(m):
-    sx, sy = decomp_scale2(m)
-    return scalemat2(sx, sy)
+    rotation_mat = matrix.eye(size)
     
-getscalemat2 = unrot2
+    rotation_mat[(d1, d1)] = cos
+    rotation_mat[(d1, d2)] = -sin
+    rotation_mat[(d2, d2)] = cos
+    rotation_mat[(d2, d1)] = sin
+    
+    return rotation_mat
+
+def rotation_matrix2(rotation):
+    cos = math.cos(rotation)
+    sin = math.sin(rotation)
+    return matrix.Matrix([
+        [cos, -sin],
+        [sin, cos]
+        ])
+
+def get_rotation_matrix(mat):
+    scale = decompose_scale(mat)
+    unscale_matrix = scale_matrix(*[1./s for s in scale])
+    return mat * unscale_matrix
+    #return rotation_matrix2(decompose_rotation2(mat))
+
+def get_scale_matrix(mat):
+    return scale_matrix(decompose_scale(mat))
+
+def decompose_rotation2(mat):
+    """Decompose the rotation angles from a transformation matrix without shear.
+    """
+    if not mat.is_square():
+        raise ValueError("Can't decompose a non-square matrix.")
+    
+    if not mat.rows() == 2:
+        raise ValueError("Matrix is not 2x2")
+        
+    rotation_mat = get_rotation_matrix(mat)
+    return math.atan2(rotation_mat[(1,0)], rotation_mat[(0,0)])
+    
+    #vec = E_X
+    #vec_tag = mat * vec
+    #x = vec_tag[(0, 0)]
+    #y = vec_tag[(1, 0)]
+    #return math.atan2(y, x)
 
 
 def main():
-    import pprint    
-    s = scalemat2(2,3)
-    r = rotmat2(math.radians(30))
-    
-    t = matmul2(r, s)
-    
-    ex = vec2(1, 0)
-    ey = vec2(0, 1)
-    
-    nx = matvec2(t, ex)
-    ny = matvec2(t, ey)
-    
-    pprint.pprint(s)
-    pprint.pprint(r)
-    pprint.pprint(t)
-    pprint.pprint(unscale2(t))
-    print math.degrees(decomp_rot2(t))
+    pass
     
 if __name__ == "__main__":
     main()

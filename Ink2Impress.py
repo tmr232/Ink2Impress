@@ -317,6 +317,23 @@ def process_layout_layer(layout_layer):
     # Now we have proper frame data to return!
     return rect_objects
 
+def get_background_color(svg_root):
+    expr = "*[local-name() = $name]"
+    namedview = svg_root.xpath(expr, name = "namedview")[0]
+    pagecolor = namedview.get("pagecolor")
+    pageopacity = namedview.get("{%s}pageopacity" % (namedview.nsmap["inkscape"], ))
+    try:
+        pageopacity = float(pageopacity)
+        r, g, b = [ord(c) for c in pagecolor[1:].decode("hex")]
+        r, g, b = [pageopacity * c for c in (r, g, b)]
+        pagecolor = "".join(chr(int(c)) for c in (r, g, b))
+        pagecolor = pagecolor.encode("hex")
+        pagecolor = "#" + pagecolor
+    except:
+        pass
+    
+    return pagecolor
+
 def create_impress(svg_tree):
     # Get the <svg> node
     
@@ -327,6 +344,9 @@ def create_impress(svg_tree):
     layers = svg_root.xpath("g")
     graphics_layer = layers[0]
     layout_layer = layers[1]
+    
+    # Get the page color
+    pagecolor = get_background_color(svg_root)
     
     # Get all the frame-rects from the layout layer, correctly transformed!
     step_rects_data = process_layout_layer(layout_layer)
@@ -387,6 +407,11 @@ def create_impress(svg_tree):
 </html>\
 """
     base_html = etree.fromstring(base_html_text)
+    
+    # Add background color
+    if pagecolor:
+        body_tag = base_html.xpath("body")[0]
+        body_tag.set("style", "background-color:%s;" % (pagecolor, ))
     
     # Get the impress <div>
     impress_div = base_html.xpath("//div")[0]

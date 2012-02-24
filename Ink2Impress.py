@@ -317,6 +317,16 @@ def process_layout_layer(layout_layer):
     # Now we have proper frame data to return!
     return rect_objects
 
+def _apply_opacity(color, opacity, back_color="#FFFFFF", max_opacity=1.0):
+    parse_color = lambda color: [ord(c) for c in color[1:].decode("hex")]
+    calc_color = lambda c, b_c: ((c * opacity) + (b_c * (max_opacity - opacity))) / max_opacity
+    rgb = parse_color(color)
+    back_rgb = parse_color(back_color)
+    result_rgb = [calc_color(c, b_c) for c, b_c in zip(rgb, back_rgb)]
+    rgb_triplet = "".join(chr(int(c)) for c in result_rgb)
+    color_string = "#" + rgb_triplet.encode("hex")
+    return color_string
+
 def get_background_color(svg_root):
     expr = "*[local-name() = $name]"
     namedview = svg_root.xpath(expr, name = "namedview")[0]
@@ -324,11 +334,7 @@ def get_background_color(svg_root):
     pageopacity = namedview.get("{%s}pageopacity" % (namedview.nsmap["inkscape"], ))
     try:
         pageopacity = float(pageopacity)
-        r, g, b = [ord(c) for c in pagecolor[1:].decode("hex")]
-        r, g, b = [pageopacity * c for c in (r, g, b)]
-        pagecolor = "".join(chr(int(c)) for c in (r, g, b))
-        pagecolor = pagecolor.encode("hex")
-        pagecolor = "#" + pagecolor
+        pagecolor = _apply_opacity(pagecolor, pageopacity)
     except:
         pass
     

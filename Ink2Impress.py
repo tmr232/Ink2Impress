@@ -16,13 +16,9 @@ import math
 import matutil
 from matutil import E_X, E_Y, Matrix, scale_matrix, rotation_matrix, eye, translation_matrix
 
-#TODO: add background color - take from SVG properties!!! Inkscape rocks!
-
 TRANSFORM_MATRIX_PAT = r"matrix\(([^,]*),([^,]*),([^,]*),([^,]*),([^,]*),([^,]*)\)"
 TRANSFORM_TRANSLATE_PAT = r"translate\(([^,]*),([^,]*)\)"
 TRANSFORM_SCALE_PAT = r"scale\(([^,]*),([^,]*)\)"
-
-#IMPORTANT: decomposition order should be altered to prefer rotation to scale!!!
 
 BASE_WIDTH      = 900
 BASE_HEIGHT     = 600
@@ -76,7 +72,6 @@ class Rect(object):
             self._transform = get_element_transform(element)
             
         # Apply the transformation to all properties
-        #NOTE: this is the first attempt to apply the transformation - probably will not work!
         # Get the rotation
         r = self._r = self._transform.r
         

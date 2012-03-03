@@ -368,9 +368,14 @@ def create_impress(svg_tree):
     
     # Create a <div> from each layout <rect>
     divs = []
+    prev_rotation = None
     for data in step_rects_data:
         scale = calc_scale(base_width, base_height, data.w, data.h)
         rotate = data.r
+        #TODO: Add the rotation change as a flag!
+        if prev_rotation is not None:
+            rotate = least_rotation_angle(prev_rotation, rotate)
+        prev_rotation = rotate
         # Here we add the location of the layout layer to compensate for
         # its translations.
         #TODO: Do we need to handle rotation and scale?

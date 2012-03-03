@@ -312,6 +312,16 @@ def process_layout_layer(layout_layer):
     # Now we have proper frame data to return!
     return rect_objects
 
+def min_ratation_diff(a1, a2):
+    diff = (a2 - a1) % 360
+    if diff < 180:
+        return diff
+    else:
+        return -((a1 - a2) % 360)
+        
+def least_rotation_angle(prev_angle, new_base_angle):
+    return prev_angle + min_ratation_diff(prev_angle, new_base_angle)
+
 def _apply_opacity(color, opacity, back_color="#FFFFFF", max_opacity=1.0):
     parse_color = lambda color: [ord(c) for c in color[1:].decode("hex")]
     calc_color = lambda c, b_c: ((c * opacity) + (b_c * (max_opacity - opacity))) / max_opacity
